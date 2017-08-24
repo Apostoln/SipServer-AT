@@ -20,6 +20,24 @@ TEST_MESSAGES = ['Hello', 'World', 'q']
 ERROR_MSG_PATTERN = re.compile(R"Exit with error code (?P<errorCode>\d+)")
 LOGGER_PATH = config.LOGGER_PATH
 
+def process(command, multiConnection=False):
+    result = []
+    command.append('-f')
+    command.append(LOGGER_PATH)
+    commandResult = subprocess.Popen(command)
+    result.append(commandResult)
+
+    if not multiConnection:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        result.append(clientSocket)
+    else:
+        amountClients = 3
+        sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(amountClients)]
+        result.append(sockets)
+
+    time.sleep(0.1)
+    return tuple(result)
+
 def checkReturnCode(clientSocket, correctCode):
     for m in TEST_MESSAGES:
         logging.debug(f'< {m}')
@@ -56,6 +74,7 @@ def checkMessageInLog(isInput):
     logFile = open(LOGGER_PATH)
 
     reason = None
+
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         for line in logFile:
             logging.debug(f'log: {line[:-1]}')
@@ -67,27 +86,6 @@ def checkMessageInLog(isInput):
     if not isAllMessagedLogged:
         reason = 'Not all input messaged are logged'
     return isAllMessagedLogged, reason
-
-
-
-def process(command, multiConnection=False):
-    result = []
-    command.append('-f')
-    command.append(LOGGER_PATH)
-    commandResult = subprocess.Popen(command)
-    result.append(commandResult)
-
-    if not multiConnection:
-        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        result.append(clientSocket)
-    else:
-        amountClients = 3
-        sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(amountClients)]
-        result.append(sockets)
-
-    time.sleep(0.1)
-    return tuple(result)
-
 
 @handleLogDir
 @printName
