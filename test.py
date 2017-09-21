@@ -8,7 +8,7 @@ from utils import freePort
 from config import Config
 
 LOCALHOST = '127.0.0.1'
-TEST_AMOUNT = 3
+TEST_AMOUNT = 4
 
 def test(testFunction):
     resultTest, reason = testFunction()

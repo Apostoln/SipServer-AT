@@ -132,7 +132,7 @@ def unavailableInterfaceLog():
     usedSocket.sendto("q".encode(), serverEndPoint)
     usedPort = usedSocket.getsockname()[-1]
 
-    result, clientSocket = process([path, '-n', '1.2.3.4', '-l', 'DEBUG', '-c', '1'])
+    result, clientSocket = process([path, '-n', '1.2.3.4', '-l', 'DEBUG'])
     return checkReturnCode(clientSocket, correctCode=3)
 
 tests = [inMessageInLog, outMessageInLog, usedPortInLog, unavailablePortInLog, unavailableInterfaceLog]
