@@ -24,7 +24,8 @@ def process(command, multiConnection=False):
     result = []
     command.append('-f')
     command.append(LOGGER_PATH)
-    commandResult = subprocess.Popen(command)
+    commandResult = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     result.append(commandResult)
 
     if not multiConnection:
@@ -53,7 +54,7 @@ def checkReturnCode(clientSocket, correctCode):
     logFile.seek(0)
     fileText = logFile.read()
     matches = re.findall(ERROR_MSG_PATTERN,fileText)
-    print(matches)
+
     if not matches:
         reason = 'There are no messages about error code in log'
         return False, reason
@@ -62,6 +63,7 @@ def checkReturnCode(clientSocket, correctCode):
     if not isReturnCodeCorrect:
         reason = f'Error code is incorrect. Must be {correctCode}, now {returnCode}'
     return isReturnCodeCorrect, reason
+
 
 def checkMessageInLog(isInput):
     sign = '>' if input else '<'
@@ -78,14 +80,40 @@ def checkMessageInLog(isInput):
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         for line in logFile:
             logging.debug(f'log: {line[:-1]}')
+        logFile.seek(0)
 
-    logFile.seek(0)
+    result.wait()
     logFileString = logFile.read()
-    isAllMessagedLogged = all(re.findall(f'.+ {sign} {msg}', logFileString) for msg in TEST_MESSAGES)
+    isAllMessagesLogged = all(re.findall(f'.+ {sign} {msg}', logFileString) for msg in TEST_MESSAGES)
 
-    if not isAllMessagedLogged:
+    if not isAllMessagesLogged:
         reason = 'Not all input messaged are logged'
-    return isAllMessagedLogged, reason
+    return isAllMessagesLogged, reason
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def checkMessageInLogWithErrorLevel():
+    result, clientSocket = process([path, '-p', port, '-l', 'ERROR'])
+    for m in TEST_MESSAGES:
+        logging.debug(f'<{m}')
+        clientSocket.sendto(m.encode(), serverEndPoint)
+
+    logFile = open(LOGGER_PATH)
+
+    reason = None
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for line in logFile:
+            logging.debug(f'log: {line[:-1]}')
+        logFile.seek(0)
+
+    result.wait()
+    logFileString = logFile.read()
+    isNoMessagesLogged = all(not re.findall(f'.+ > {msg}', logFileString) for msg in TEST_MESSAGES)
+
+    if not isNoMessagesLogged:
+        reason = 'Messages is logged while only ERROR loglevel is specified'
+    return isNoMessagesLogged, reason
 
 @handleLogDir
 @printName
@@ -135,8 +163,8 @@ def unavailableInterfaceLog():
     result, clientSocket = process([path, '-n', '1.2.3.4', '-l', 'DEBUG'])
     return checkReturnCode(clientSocket, correctCode=3)
 
-tests = [inMessageInLog, outMessageInLog, usedPortInLog, unavailablePortInLog, unavailableInterfaceLog]
-
+tests = [inMessageInLog, outMessageInLog, checkMessageInLogWithErrorLevel, usedPortInLog, unavailablePortInLog, unavailableInterfaceLog]
+#tests = [checkMessageInLogWithErrorLevel]
 
 
 
