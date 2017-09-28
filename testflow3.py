@@ -18,9 +18,9 @@ TEST_SIP_REQUEST = R"""INVITE sip:nikolia@example.com SIP/2.0
 Record-Route: <sip:nikolia@10.0.0.10;lr>
 Via: SIP/2.0/UDP 10.0.0.10;branch=z9hG4bK3af7.0a6e92f4.0
 Via: SIP/2.0/UDP 192.168.0.2:5060;branch=z9hG4bK12ee92cb;rport=5060
-From: "78128210000" <sip:78128210000@neutral.com>;tag=as149b2d97
+From: "78128210000" <sip:78128210000@n192.168.64.100>;tag=as149b2d97
 To: <sip:nikolia@example.com>
-Contact: <sip:78128210000@neutral.com>
+Contact: <sip:78128210000@192.168.64.100>
 Call-ID: 3cbf958e6f43d91905c3fa964a373dcb@example.com
 CSeq: 103 INVITE
 Max-Forwards: 16
@@ -47,7 +47,7 @@ a=sendrecv"""
 
 def process(command, multiConnection=False):
     result = []
-    commandResult = subprocess.Popen(command)
+    commandResult = subprocess.Popen(command, stdout=subprocess.PIPE)
     result.append(commandResult)
 
     if not multiConnection:
