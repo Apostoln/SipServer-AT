@@ -73,6 +73,7 @@ def parsingError(message, correctReturnCode):
         reason = f"Return code is incorrect. Must be {correctReturnCode}, now {returncode}"
     return isReturnCodeCorrect, reason
 
+
 @handleLogDir
 @printName
 @timeout(TIMEOUT_LIMIT)
@@ -195,15 +196,53 @@ def parsingErrorMessageWithoutSpaceString():
     return parsingError(message, correctReturnCode)
 
 
-def validationHeader1():
-    #will be done later
-    #TODO: impl
+def validContact():
     pass
 
-def validationHeader2():
-    # will be done later
-    # TODO: impl
-    pass
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def invalidContact1():
+    invalidContact = 'foobar'
+    message = re.sub(r'Contact: \S+','Contact: ' + invalidContact,TEST_SIP_REQUEST)
+    correctReturnCode = 5
+    return parsingError(message, correctReturnCode)
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def invalidContact2():
+    invalidContact = 'sip:000999123@1234.168.64.230:5'
+    message = re.sub(r'Contact: \S+', 'Contact: ' + invalidContact, TEST_SIP_REQUEST)
+    correctReturnCode = 5
+    return parsingError(message, correctReturnCode)
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def invalidContact3():
+    invalidContact = 'sip:!@##$%%@192.168.67.230'
+    message = re.sub(r'Contact: \S+', 'Contact: ' + invalidContact, TEST_SIP_REQUEST)
+    correctReturnCode = 5
+    return parsingError(message, correctReturnCode)
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def validContact():
+    #dirty crutch for avoiding copy-pasting
+    global TEST_SIP_REQUEST
+    contact = '<sip:000999123@193.28.87.25:1234>;tag=z5b3zqxlqy2s4omu'
+    TEST_SIP_REQUEST = re.sub(r'Contact: \S+', contact, TEST_SIP_REQUEST)
+    return requestParsing()
 
 
-tests = [requestParsing, checkDuplicate, parsingErrorBrokenMessage, parsingErrorMessageWithoutHeaders, parsingErrorMessageWithoutSpaceString]
+tests = [requestParsing,
+         checkDuplicate,
+         parsingErrorBrokenMessage,
+         parsingErrorMessageWithoutHeaders,
+         parsingErrorMessageWithoutSpaceString,
+         invalidContact1,
+         invalidContact2,
+         invalidContact3,
+         validContact]
