@@ -47,7 +47,7 @@ a=sendrecv"""
 
 def process(command, multiConnection=False):
     result = []
-    commandResult = subprocess.Popen(command, stdout=subprocess.PIPE)
+    commandResult = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result.append(commandResult)
 
     if not multiConnection:
@@ -133,7 +133,7 @@ def requestParsing():
     isFinishSuccessfully = not bool(returncode)
     if not isFinishSuccessfully:
         reason = f"Return code is {returncode}"
-    return isFinishSuccessfully and headersFlag and valuesFlag , reason
+    return isFinishSuccessfully and headersFlag and valuesFlag , reason if reason else None
 
 
 @handleLogDir
@@ -237,6 +237,35 @@ def validContact():
     return requestParsing()
 
 
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def methodInRequest():
+    result, clientSocket = process([path, '-p', port])
+    clientSocket.sendto(TEST_SIP_REQUEST.encode(), serverEndPoint)
+
+    logging.debug('Send:')
+    for line in TEST_SIP_REQUEST.split('\n'):
+        logging.debug(f'<{line}')
+
+    data = clientSocket.recv(4096).decode()
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for d in data.split('\n'):
+            logging.debug(f'> {d}')
+
+    reason = None
+    isMethodPresent = False
+    if 'Method' in data:
+        if 'Method: INVITE' in data:
+            isMethodPresent = True
+        else:
+            reason = 'Incorrect header'
+    else:
+        reason = 'There is no "Method" header in response'
+
+    return isMethodPresent, reason
+
+
 tests = [requestParsing,
          checkDuplicate,
          parsingErrorBrokenMessage,
@@ -245,4 +274,5 @@ tests = [requestParsing,
          invalidContact1,
          invalidContact2,
          invalidContact3,
-         validContact]
+         validContact,
+         methodInRequest]
