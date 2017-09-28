@@ -43,7 +43,16 @@ a=fmtp:101 0-16
 a=silenceSupp:off - - - -
 a=sendrecv"""
 
+TEST_SIP_RESPONSE = R"""SIP/2.0 200 OK
+	Via: SIP/2.0/UDP 193.28.87.25:5060;branch=z9hG4bK-524287-1---2d9fb4aaeae89f2ad3cd63c4f84586b5;rport=5060
+	Via: SIP/2.0/UDP 192.168.233.57:5060;branch=z9hG4bK1068576487;received=91.217.66.154;rport=5060
+	To: <sip:77701@193.28.87.25:5060>;tag=d14f6776
+	From: "77703" <sip:77703@193.28.87.25:5060>;tag=97151946
+	Call-ID: 4_3578482719@192.168.233.57
+	CSeq: 2 CANCEL
+	Content-Length: 0
 
+"""
 
 def process(command, multiConnection=False):
     result = []
@@ -265,6 +274,29 @@ def methodInRequest():
 
     return isMethodPresent, reason
 
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def methodInResponse():
+    result, clientSocket = process([path, '-p', port])
+    clientSocket.sendto(TEST_SIP_RESPONSE.encode(), serverEndPoint)
+
+    logging.debug('Send:')
+    for line in TEST_SIP_RESPONSE.split('\n'):
+        logging.debug(f'<{line}')
+
+    data = clientSocket.recv(4096).decode()
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for d in data.split('\n'):
+            logging.debug(f'> {d}')
+
+    reason = None
+    isMethodNotPresent = False
+    if not 'Method' in data:
+        isMethodNotPresent = True
+    else:
+        reason = '"Method" header is present but incoming message is response, not request'
+    return isMethodNotPresent, reason
 
 tests = [requestParsing,
          checkDuplicate,
@@ -275,4 +307,5 @@ tests = [requestParsing,
          invalidContact2,
          invalidContact3,
          validContact,
-         methodInRequest]
+         methodInRequest,
+         methodInResponse]
