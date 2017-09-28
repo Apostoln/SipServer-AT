@@ -62,6 +62,17 @@ def process(command, multiConnection=False):
     time.sleep(0.1)
     return tuple(result)
 
+def parsingError(message, correctReturnCode):
+    result, clientSocket = process([path, '-p', port, '-l', 'DEBUG', '-c', '1'])
+    clientSocket.sendto(message.encode(), serverEndPoint)
+    logging.debug(f'<{message}')
+    returncode = result.wait()
+    isReturnCodeCorrect = correctReturnCode == returncode
+    reason = None
+    if not isReturnCodeCorrect:
+        reason = f"Return code is incorrect. Must be {correctReturnCode}, now {returncode}"
+    return isReturnCodeCorrect, reason
+
 @handleLogDir
 @printName
 @timeout(TIMEOUT_LIMIT)
@@ -123,6 +134,7 @@ def requestParsing():
         reason = f"Return code is {returncode}"
     return isFinishSuccessfully and headersFlag and valuesFlag , reason
 
+
 @handleLogDir
 @printName
 @timeout(TIMEOUT_LIMIT)
@@ -159,20 +171,29 @@ def checkDuplicate():
 @handleLogDir
 @printName
 @timeout(TIMEOUT_LIMIT)
-def parsingError():
+def parsingErrorBrokenMessage():
     message = "foobar"
-
-    result, clientSocket = process([path, '-p', port, '-l', 'DEBUG', '-c', '1'])
-    clientSocket.sendto(message.encode(), serverEndPoint)
-    logging.debug(f'<{message}')
-    returncode = result.wait()
-
     correctReturnCode = 5
-    isReturnCodeCorrect = correctReturnCode == returncode
-    reason = None
-    if not isReturnCodeCorrect:
-        reason = f"Return code is incorrect. Must be {correctReturnCode}, now {returncode}"
-    return isReturnCodeCorrect, reason
+    return parsingError(message, correctReturnCode)
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def parsingErrorMessageWithoutHeaders():
+    message = """"INVITE sip:nikolia@example.com SIP/2.0
+
+    """
+    correctReturnCode = 5
+    return parsingError(message, correctReturnCode)
+
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def parsingErrorMessageWithoutSpaceString():
+    message = TEST_SIP_REQUEST.replace('\n\n','\n')
+    correctReturnCode = 5
+    return parsingError(message, correctReturnCode)
+
 
 def validationHeader1():
     #will be done later
@@ -185,4 +206,4 @@ def validationHeader2():
     pass
 
 
-tests = [requestParsing, checkDuplicate, parsingError]
+tests = [requestParsing, checkDuplicate, parsingErrorBrokenMessage, parsingErrorMessageWithoutHeaders, parsingErrorMessageWithoutSpaceString]
