@@ -9,3 +9,4 @@ class Config:
     interface = None
     serverEndPoint = None
     LOGGER_PATH = 'log/sipserver.log'
+    ACCOUNTS_FILE_PATH = 'etc/accounts.csv'

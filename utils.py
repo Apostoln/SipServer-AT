@@ -12,6 +12,8 @@ config = Config()
 LOGGER_PATH = config.LOGGER_PATH
 LOG_DIR = LOGGER_PATH.split('/')[0]
 LOG_DIR = LOG_DIR if LOG_DIR else '.'
+ACCOUNTS_FILE_PATH = config.ACCOUNTS_FILE_PATH
+ACCOUNTS_DIR = ACCOUNTS_FILE_PATH.split('/')[0]
 
 
 def freePort():
@@ -63,6 +65,13 @@ def handleLogDir(fn):
         return res
     return wrapped
 
+def handleAccountsFile(fn):
+    @functools.wraps(fn)
+    def wrapped():
+        res = fn()
+        shutil.rmtree(ACCOUNTS_DIR, ignore_errors=True)
+        return res
+    return wrapped
 
 
 def printConsoleOut(result):

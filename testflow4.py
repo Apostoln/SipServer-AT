@@ -3,9 +3,10 @@ import subprocess
 import time
 import logging
 import re
+import os
 
 from testflow2 import ERROR_MSG_PATTERN
-from utils import printName, timeout, handleLogDir
+from utils import printName, timeout, handleLogDir, handleAccountsFile
 from config import Config
 config = Config()
 address = config.address
@@ -13,6 +14,7 @@ port = config.port
 path = config.path
 interface = config.interface
 serverEndPoint = config.serverEndPoint
+LOGGER_PATH = config.LOGGER_PATH
 
 TIMEOUT_LIMIT = 5
 REGISTER_REQUEST = R"""REGISTER sip:193.28.87.25:5060 SIP/2.0
@@ -56,10 +58,10 @@ def invalidAccountsFileReturnCode():
     result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a', 'foobar.csv'])
     returnCode = result.wait()
     correctReturnCode = 6
-    isReturnCodeCorrect = returncode == correctReturnCode
+    isReturnCodeCorrect = returnCode == correctReturnCode
     reason = None
     if not isReturnCodeCorrect:
-        reason = f'Error code is incorrect. Must be {correctCode}, now {returnCode}'
+        reason = f'Error code is incorrect. Must be {correctReturnCode}, now {returnCode}'
     return isReturnCodeCorrect, reason
 
 @handleLogDir
@@ -69,6 +71,12 @@ def invalidAccountsFileReturnCodeInLog():
     result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a', 'foobar.csv'])
     result.wait()
     logFile = open(LOGGER_PATH)
+
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for line in logFile:
+            logging.debug(f'log: {line[:-1]}')
+
+    logFile.seek(0)
 
     fileText = logFile.read()
     matches = re.findall(ERROR_MSG_PATTERN,fileText)
@@ -84,9 +92,37 @@ def invalidAccountsFileReturnCodeInLog():
         reason = f'Error code in log is incorrect. Must be {correctCode}, now {returnCode}'
     return isReturnCodeCorrect, reason
 
+@handleAccountsFile
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
 def register():
-    result, clientSocket = process([path, '-p', port, '-l', 'ERROR'])
+    pathToAccs = Config.ACCOUNTS_FILE_PATH
+    os.mkdir('./etc')
+    os.mknod(pathToAccs)
+    result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a',  pathToAccs])
+    message = REGISTER_REQUEST
+    clientSocket.sendto(message.encode(), serverEndPoint)
+    logging.debug(f'<{message}')
+
+    logFile = open(LOGGER_PATH)
+
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for line in logFile:
+            logging.debug(f'log: {line[:-1]}')
+
+    data = clientSocket.recv(4096).decode()
+
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for d in data.split('\n'):
+            logging.debug(f'> {d}')
 
 
+    dataLines = data.split('\n')
+    isResponseOk = dataLines[0] == "SIP/2.0 200 OK"
+    reason = None
+    if not isResponseOk:
+        reason = "Response is not SIP/2.0 200 OK"
+    return isResponseOk, reason
 
-tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog]
+tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog, register]
