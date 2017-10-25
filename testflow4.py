@@ -77,6 +77,7 @@ def invalidAccountsFileReturnCodeInLog():
     logFile.seek(0)
 
     fileText = logFile.read()
+    logFile.close()
     matches = re.findall(ERROR_MSG_PATTERN,fileText)
 
     reason = None
@@ -113,6 +114,7 @@ def register():
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         for line in logFile:
             logging.debug(f'log: {line[:-1]}')
+    logFile.close()
 
     dataLines = data.split('\n')
     isResponseOk = dataLines[0] == "SIP/2.0 200 OK"
@@ -140,6 +142,7 @@ def checkToTag():
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         for line in logFile:
             logging.debug(f'log: {line[:-1]}')
+    logFile.close()
 
     splittedData = [d.split(': ',1) for d in data.rstrip().split('\n')[1:]]
     msgDict = { d[0]:d[1] for d in splittedData}
@@ -151,4 +154,30 @@ def checkToTag():
         reason = 'There is no tag in "To" header'
     return isTag, reason
 
-tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog, register, checkToTag]
+@handleAccountsFile
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def checkAccountsSaving():
+    pathToAccs = Config.ACCOUNTS_FILE_PATH
+    os.mkdir('./etc')
+    os.mknod(pathToAccs)
+    result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a', pathToAccs])
+    message = REGISTER_REQUEST
+    clientSocket.sendto(message.encode(), serverEndPoint)
+    logging.debug(f'<{message}')
+
+    data = clientSocket.recv(4096).decode()
+
+    garbage = 'foo'
+    clientSocket.sendto(garbage.encode(), serverEndPoint)
+    result.wait()
+    accounts = open(pathToAccs)
+    isAccountSaved = bool(accounts.readlines())
+    reason = None
+    if not isAccountSaved:
+        reason = "Accounts are not saved after error"
+    return isAccountSaved, reason
+
+
+tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog, register, checkToTag, checkAccountsSaving]
