@@ -33,8 +33,6 @@ n=0
 n=1
 """
 
-#OK_RESPONSE = R""""""
-
 
 def process(command, multiConnection=False):
     result = []
@@ -100,16 +98,10 @@ def register():
     pathToAccs = Config.ACCOUNTS_FILE_PATH
     os.mkdir('./etc')
     os.mknod(pathToAccs)
-    result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a',  pathToAccs])
+    result, clientSocket = process([path, '-p', port, '-l', 'ERROR'])
     message = REGISTER_REQUEST
     clientSocket.sendto(message.encode(), serverEndPoint)
     logging.debug(f'<{message}')
-
-    logFile = open(LOGGER_PATH)
-
-    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-        for line in logFile:
-            logging.debug(f'log: {line[:-1]}')
 
     data = clientSocket.recv(4096).decode()
 
@@ -117,6 +109,10 @@ def register():
         for d in data.split('\n'):
             logging.debug(f'> {d}')
 
+    logFile = open(LOGGER_PATH)
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for line in logFile:
+            logging.debug(f'log: {line[:-1]}')
 
     dataLines = data.split('\n')
     isResponseOk = dataLines[0] == "SIP/2.0 200 OK"
@@ -125,4 +121,34 @@ def register():
         reason = "Response is not SIP/2.0 200 OK"
     return isResponseOk, reason
 
-tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog, register]
+@handleAccountsFile
+@handleLogDir
+@printName
+@timeout(TIMEOUT_LIMIT)
+def checkToTag():
+    pathToAccs = Config.ACCOUNTS_FILE_PATH
+    os.mkdir('./etc')
+    os.mknod(pathToAccs)
+    result, clientSocket = process([path, '-p', port, '-l', 'ERROR', '-a', pathToAccs])
+    message = REGISTER_REQUEST
+    clientSocket.sendto(message.encode(), serverEndPoint)
+    logging.debug(f'<{message}')
+
+    data = clientSocket.recv(4096).decode()
+
+    logFile = open(LOGGER_PATH)
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        for line in logFile:
+            logging.debug(f'log: {line[:-1]}')
+
+    splittedData = [d.split(': ',1) for d in data.rstrip().split('\n')[1:]]
+    msgDict = { d[0]:d[1] for d in splittedData}
+    to = msgDict['To']
+    tagPattern = re.compile(R".+;tag=.+")
+    isTag = tagPattern.findall(to) != 0
+    reason = None
+    if not isTag:
+        reason = 'There is no tag in "To" header'
+    return isTag, reason
+
+tests = [invalidAccountsFileReturnCode, invalidAccountsFileReturnCodeInLog, register, checkToTag]
