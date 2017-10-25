@@ -70,6 +70,9 @@ if __name__ == '__main__':
     elif testflownumber == 3:
         import testflow3
         testflow = testflow3.tests
+    elif testflownumber == 4:
+        import testflow4
+        testflow = testflow4.tests
     else:
         print('--testflow argument must be integer in range [1,2]')
         exit(1)
